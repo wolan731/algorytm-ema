@@ -9,6 +9,7 @@ import json
 init()
 init(autoreset=True)
 
+zmienna="AAPL"
 
 ticker = yf.Ticker("AAPL")
 
