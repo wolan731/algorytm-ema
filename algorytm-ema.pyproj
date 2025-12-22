@@ -23,7 +23,9 @@
   <ItemGroup>
     <Compile Include="algorytm_ema.py" />
     <Compile Include="klasa1.py" />
+    <Compile Include="klasa_enum.py" />
     <Compile Include="mod.py" />
+    <Compile Include="symbole.py" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in

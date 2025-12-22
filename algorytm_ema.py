@@ -4,31 +4,49 @@ import numpy as np
 import string
 import requests
 import mod
-from colorama import init, Fore, Back, Style
 import json
 import time
+import MetaTrader5 as mt5
+import klasa1
+import klasa_enum
 from datetime import datetime, timedelta
-init()
-init(autoreset=True)
 
 
-ticker = yf.Ticker("GBPUSD=X")
 
-def wait_until_next_minute():
-    time.sleep(10)
+
+
+
+
+
+time.sleep(1)
+symbol="USDJPY"
+dane=klasa1.dane_glowne_MT5(symbol)
+
+def wait_60_seconds_aligned(): #prawidlowy
     now = datetime.now()
-    next_minute = (now + timedelta(minutes=1)).replace(second=0, microsecond=0)
-    time.sleep((next_minute - now).total_seconds())
+    next_time = now + timedelta(seconds=60)
+    sleep_time = (next_time - now).total_seconds()
+    time.sleep(sleep_time)
 
 
 
 def main():
    
-    stop_price_cross_ema=0
+    mt5.initialize()
+
+    
+   
+    
+    stop_price_cross_ema=0 
     stop_ema_cross_ema=0
     while(1):
-     wait_until_next_minute()
-     mod.info(ticker,stop_price_cross_ema,stop_ema_cross_ema)
-     
+        #if mod.londondon_newyork():
+             
+             mod.info(stop_price_cross_ema,stop_ema_cross_ema,dane) #prawidlowy
+             wait_60_seconds_aligned()
+       # else:
+           # time.sleep(10*60)
+    
+    
 
 main()
