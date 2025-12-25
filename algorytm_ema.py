@@ -18,8 +18,8 @@ from datetime import datetime, timedelta
 
 
 
-time.sleep(1)
-symbol="USDJPY"
+time.sleep(1) 
+symbol="EURUSD"
 dane=klasa1.dane_glowne_MT5(symbol)
 
 def wait_60_seconds_aligned(): #prawidlowy

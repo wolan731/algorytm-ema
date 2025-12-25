@@ -3,6 +3,9 @@ import pandas as pd
 import numpy as np
 import math
 import klasa_enum
+from datetime import datetime , timedelta,timezone 
+from colorama import init, Fore
+#abs(EMA20 - EMA50) > X dodaj dystans
 
 class dane_glowne_MT5:
 
@@ -18,7 +21,7 @@ class dane_glowne_MT5:
 
     def __init__(self,symbol: str): # prowidlowy 
         self.symbol = symbol
-
+        init(autoreset=True)
         
      
         self.zmiana=0
@@ -43,12 +46,13 @@ class dane_glowne_MT5:
         if rates is None or len(rates) < lookback:
             raise RuntimeError(mt5.last_error())
 
-        print(rates[-1])
+        
         self.df = pd.DataFrame(rates)
         
         pd.set_option('display.max_columns', None)
       #  print(self.df)
         self.df["time"] = pd.to_datetime(self.df["time"], unit="s")
+        print(self.df.iloc[-1])
       #  last_close = self.df.iloc[-1]["close"]
       #  print(f"Last closed candle close price: {last_close}")
         
@@ -96,13 +100,13 @@ class dane_glowne_MT5:
    
     def stop_loss(self, k: float, czyn: str):
             if czyn == "SHORT":
-                return self.closees()[-1] - k * self.atr(14)
-            return self.closees()[-1] + k * self.atr(14)
+                return self.closees()[-1] + k * self.atr(14)
+            return self.closees()[-1] - k * self.atr(14)
 
     def take_profit(self, k: float, czyn: str):
             if czyn == "SHORT":
-                return self.closees()[-1] + k * self.atr(14)
-            return self.closees()[-1] - k * self.atr(14)
+                return self.closees()[-1] - k * self.atr(14)
+            return self.closees()[-1] + k * self.atr(14)
 
     def R_multiple(self, capital: float, side: str, atr_multiplier: float = 1.5):
             risk_percent = self.risk_leader()
@@ -112,6 +116,35 @@ class dane_glowne_MT5:
             if risk_per_unit == 0 or capital is None:
                 return 0
             return (capital * risk_percent) / risk_per_unit
+
+    def win_lose(self, ticket):
+        if ticket is None:
+            print(Fore.RED + "Błąd: brak numeru ticket")
+            return
+
+        utc_to = datetime.now(timezone.utc)
+        utc_from = utc_to - timedelta(hours=24)
+
+        history_positions = mt5.history_deals_get(utc_from, utc_to, ticket)
+
+        if history_positions is None:
+            print(Fore.RED + "Błąd: brak danych historycznych")
+            return
+
+        for pos in history_positions:
+           # print(f"Ticket: {pos.ticket}, Type: {pos.type}, Profit: {pos.profit}")
+
+            if pos.profit > 0:
+               # print(Fore.CYAN + "WYGRANA")
+                self.lose = 0
+
+            elif pos.profit < 0:
+               # print(Fore.CYAN + "STRATA")
+                self.lose += 1
+
+            
+               # print(Fore.CYAN + "BREAK EVEN")
+
 
     def risk_leader(self):
             if self.lose == 0: return 0.05
@@ -166,49 +199,52 @@ class dane_glowne_MT5:
         shift = len(close_values) - len(ema_values)
         start = max(shift + 1, len(close_values) - lookback)
         
+     
         for i in range(start, len(close_values)):
            
             diff_prev = close_values[i-1] - ema_values[i-1-shift]
             diff_curr = close_values[i]   - ema_values[i-shift]
 
             if diff_prev < -EPS and diff_curr > EPS: 
-                print(f"LONG | świeca i={i} (od końca {- (len(close_values)-i)}) | "
+                print(Fore.GREEN + f" LONG | świeca i={i} (od końca {- (len(close_values)-i)}) | "
                         f"close={close_values[i]:.5f} | ema={ema_values[i-shift]:.5f}")
                 self.kierunek="LONG"
-                self.zmiana=1
                 return 
 
             if diff_prev > EPS and diff_curr < -EPS:
-                print(f"SHORT | świeca i={i} (od końca {- (len(close_values)-i)}) | "
+                print(Fore.RED +f"SHORT | świeca i={i} (od końca {- (len(close_values)-i)}) | "
                         f"close={close_values[i]:.5f} | ema={ema_values[i-shift]:.5f}")
                 self.kierunek="SHORT"
-                self.zmiana=1
                 return 
               
-        print( f"NEUTRAL | ostatnia świeca | "
-                 f"close={close_values[-1]:.5f} | ema={ema_values[-1]:.5f}")
-        if(self.zmiana==0):
-            self.kierunek="NEUTRAL"
+        print(Fore.BLUE + f"NEUTRAL | ostatnia świeca | "
+        f"close={close_values[-1]:.5f} | ema={ema_values[-1]:.5f}")
+        
+        self.kierunek="NEUTRAL"
         return 
     # ---------------- Cross EMA ----------------
 
-    def sprawdz_cross_ema(self, zwroc_20: list, zwroc_50: list,look_back=0)-> str:
+    def sprawdz_cross_ema(self, zwroc_20: list, zwroc_50: list, look_back=0) -> str:
         EPS = 1e-5
-
-        #for i in range(1,look_back):
 
         diff_prev = zwroc_20[-2] - zwroc_50[-2]
         diff_curr = zwroc_20[-1] - zwroc_50[-1]
 
         if diff_prev < -EPS and diff_curr > EPS:
-                print(" GOLDEN CROSS (EMA20 ↑ EMA50)")
+            print(Fore.GREEN + f"GOLDEN CROSS  EMA20 > EMA50  -> LONG {self.closees()[-1]}")
+            self.zmiana = 1
+            return "LONG"
 
-                return "LONG"
         elif diff_prev > EPS and diff_curr < -EPS:
-                print(" DEATH CROSS (EMA20 ↓ EMA50)")
-                return "SHORT"
+            print(Fore.RED + f"DEATH CROSS   EMA20 < EMA50  -> SHORT {self.closees()[-1]}")
+            self.zmiana = 1
+            return "SHORT"
 
-        print("Brak crossa")
-        return "NEUTRAL"
+        print(Fore.BLUE + f"NO CROSS      EMA20 ~ EMA50  -> NEUTRAL {self.closees()[-1]}")
+
+        if self.zmiana == 0:
+            return "NEUTRAL"
+        
+       
       
   
